@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Essencio — Checklist de Voo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== TELA DE LOGIN ===== -->
+
+<div id="tela-login">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="drone-icon">🛸</div>
+      <h1>Essencio</h1>
+      <p class="empresa-subtitulo">Tecnologia Ambiental</p>
+      <p class="sistema-label">📋 Sistema de Checklist de Voo</p>
+    </div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="seu@email.com" />
+    </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" id="login-senha" placeholder="••••••••" onkeydown="if(event.key==='Enter') fazerLogin()" />
+    </div>
+    <button class="btn btn-primary" onclick="fazerLogin()">Entrar</button>
+    <div class="erro-msg" id="login-erro"></div>
+  </div>
+</div>
+
+<!-- ===== APP PRINCIPAL ===== -->
+
+<div id="app">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <span class="icon">🛸</span>
+      <div>
+        <span class="nome-sistema">Essencio</span>
+        <span class="subtitulo-sistema">Checklist de Voo</span>
+      </div>
+      <span class="badge-base" id="nav-base" style="display:none"></span>
+    </div>
+    <div class="navbar-right">
+      <span class="navbar-user" id="nav-usuario"></span>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
+  </nav>
+
+  <div class="nav-tabs" id="nav-tabs"></div>
+  <div class="content" id="conteudo-principal"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==========================================
+// ESTADO GLOBAL
+// ==========================================
+let usuario = null;
+let token   = null;
+let abaAtiva = '';
+
+// ==========================================
+// UTILITÁRIOS
+// ==========================================
+function mostrarToast(msg, tipo = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast show ${tipo === 'erro' ? 'erro' : ''}`;
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+function formatarData(d) {
+  if (!d) return '-';
+  const [y, m, dia] = d.split('-');
+  return `${dia}/${m}/${y}`;
+}
+
+function formatarHora(h) {
+  if (!h) return '-';
+  return h.substring(0, 5);
+}
+
+async function apiRequest(url, method = 'GET', body = null) {
+  const opts = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': Bearer ${token}
+    }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res  = await fetch(url, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.erro || 'Erro na requisição');
+  return data;
+}
+
+// ==========================================
+// AUTH
+// ==========================================
+async function fazerLogin() {
+  const email  = document.getElementById('login-email').value.trim();
+  const senha  = document.getElementById('login-senha').value;
+  const erroEl = document.getElementById('login-erro');
+  erroEl.style.display = 'none';
+
+  if (!email || !senha) {
+    erroEl.textContent = 'Preencha email e senha.';
+    erroEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    const resp = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, senha })
+    });
+    const res = await resp.json();
+    if (!resp.ok) throw new Error(res.erro);
+
+    token   = res.token;
+    usuario = res.usuario;
+    localStorage.setItem('token',   token);
+    localStorage.setItem('usuario', JSON.stringify(usuario));
+    iniciarApp();
+  } catch (e) {
+    erroEl.textContent = e.message || 'Erro ao fazer login.';
+    erroEl.style.display = 'block';
+  }
+}
+
+function logout() {
+  localStorage.clear();
+  token   = null;
+  usuario = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('tela-login').style.display = 'flex';
+}
+
+// ==========================================
+// INICIAR APP
+// ==========================================
+function iniciarApp() {
+  document.getElementById('tela-login').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('nav-usuario').textContent = usuario.nome;
+
+  if (usuario.base) {
+    const b = document.getElementById('nav-base');
+    b.textContent = usuario.base;
+    b.style.display = 'inline';
+  }
+
+  const tabs = document.getElementById('nav-tabs');
+  tabs.innerHTML = '';
+
+  if (usuario.perfil === 'piloto') {
+    criarTab('novo-checklist', '📋 Novo Checklist');
+    criarTab('meus-voos', '📂 Meus Registros');
+    mostrarAba('novo-checklist');
+  } else {
+    criarTab('dashboard', '📊 Dashboard');
+    criarTab('todos-checklists', '📂 Todos os Registros');
+    criarTab('gerenciar-usuarios', '👥 Usuários');
+    mostrarAba('dashboard');
+  }
+}
+
+function criarTab(id, label) {
+  const tab = document.createElement('div');
+  tab.className  = 'nav-tab';
+  tab.textContent = label;
+  tab.onclick    = () => mostrarAba(id);
+  tab.dataset.tab = id;
+  document.getElementById('nav-tabs').appendChild(tab);
+}
+
+function mostrarAba(id) {
+  abaAtiva = id;
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    t.classList.toggle('ativo', t.dataset.tab === id);
+  });
+
+  const c = document.getElementById('conteudo-principal');
+  c.innerHTML = '<div class="loading"><div class="spinner"></div>Carregando...</div>';
+
+  if      (id === 'novo-checklist')     renderNovoChecklist();
+  else if (id === 'meus-voos')          renderMeusVoos();
+  else if (id === 'dashboard')          renderDashboard();
+  else if (id === 'todos-checklists')   renderTodosChecklists();
+  else if (id === 'gerenciar-usuarios') renderUsuarios();
+}
+
+// ==========================================
+// PILOTO — NOVO CHECKLIST
+// ==========================================
+function renderNovoChecklist() {
+  const c = document.getElementById('conteudo-principal');
+  c.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">📋 Novo Checklist de Voo</div>
+        <span style="font-size:13px;color:var(--cinza)">${usuario.base}</span>
+      </div>
+
+      <div class="toggle-row">
+        <span class="toggle-label">Voo realizado?</span>
+        <label class="toggle">
+          <input type="checkbox" id="voo-realizado" checked onchange="toggleVooRealizado()">
+          <span class="toggle-slider"></span>
+        </label>
+        <span id="voo-status-label" style="font-weight:600;color:var(--verde)">Sim</span>
+      </div>
+
+      <div class="secao-titulo">📅 Missão</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Data da Missão *</label>
+          <input type="date" id="f-data" />
+        </div>
+        <div class="form-group">
+          <label>Local da Missão *</label>
+          <input type="text" id="f-local" placeholder="Ex: Reserva Florestal Norte" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Ponto de Decolagem *</label>
+        <input type="text" id="f-decolagem" placeholder="Ex: Margem do Rio, coordenada X" />
+      </div>
+
+      <div id="campos-voo">
+        <div class="secao-titulo">⏱️ Horários</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Horário de Decolagem</label>
+            <input type="time" id="f-hora-dec" />
+          </div>
+          <div class="form-group">
+            <label>Horário de Retorno</label>
+            <input type="time" id="f-hora-ret" />
+          </div>
+        </div>
+
+        <div class="secao-titulo">🔋 Bateria do Drone</div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label>Na Decolagem (%)</label>
+            <input type="number" id="f-drone-dec" min="0" max="100" placeholder="Ex: 95" oninput="calcBateria('drone')" />
+          </div>
+          <div class="form-group">
+            <label>No Retorno (%)</label>
+            <input type="number" id="f-drone-ret" min="0" max="100" placeholder="Ex: 42" oninput="calcBateria('drone')" />
+          </div>
+          <div class="form-group">
+            <label>Utilizada (%)</label>
+            <input type="number" id="f-drone-util" readonly placeholder="Calculado"
+              style="background:var(--verde-bg);font-weight:700;color:var(--verde-escuro)" />
+          </div>
+        </div>
+
+        <div class="secao-titulo">🎮 Bateria do Controle</div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label>Na Decolagem (%)</label>
+            <input type="number" id="f-ctrl-dec" min="0" max="100" placeholder="Ex: 88" oninput="calcBateria('ctrl')" />
+          </div>
+          <div class="form-group">
+            <label>No Retorno (%)</label>
+            <input type="number" id="f-ctrl-ret" min="0" max="100" placeholder="Ex: 61" oninput="calcBateria('ctrl')" />
+          </div>
+          <div class="form-group">
+            <label>Utilizada (%)</label>
+            <input type="number" id="f-ctrl-util" readonly placeholder="Calculado"
+              style="background:var(--verde-bg);font-weight:700;color:var(--verde-escuro)" />
+          </div>
+        </div>
+      </div>
+
+      <div id="campo-motivo" style="display:none">
+        <div class="secao-titulo">⚠️ Motivo da Não Realização</div>
+        <div class="form-group">
+          <label>Descreva o motivo *</label>
+          <textarea id="f-motivo" placeholder="Ex: Condições meteorológicas adversas, chuva intensa..."></textarea>
+
+
+    </div>
+  </div>
+
+  <button class="btn btn-primary" style="margin-top:8px" onclick="salvarChecklist()">✅ Salvar Checklist</button>
+</div>
+
+
+`;
+
+document.getElementById(‘f-data’).value = new Date().toISOString().split(‘T’)[0];
+}
+
+function toggleVooRealizado() {
+const realizado = document.getElementById(‘voo-realizado’).checked;
+document.getElementById(‘campos-voo’).style.display    = realizado ? ‘block’ : ‘none’;
+document.getElementById(‘campo-motivo’).style.display  = realizado ? ‘none’  : ‘block’;
+document.getElementById(‘voo-status-label’).textContent = realizado ? ‘Sim’ : ‘Não’;
+document.getElementById('voo-status-label').style.color = realizado ? 'var(-verde)' : 'var(-vermelho)';
+}
+
+function calcBateria(tipo) {
+const dec = parseFloat(document.getElementById(`f-${tipo}-dec`).value);
+const ret = parseFloat(document.getElementById(`f-${tipo}-ret`).value);
+if (!isNaN(dec) && !isNaN(ret)) {
+document.getElementById(`f-${tipo}-util`).value = Math.max(0, dec - ret);
+}
+}
+
+async function salvarChecklist() {
+const realizado      = document.getElementById(‘voo-realizado’).checked;
+const data_missao    = document.getElementById(‘f-data’).value;
+const local_missao   = document.getElementById(‘f-local’).value.trim();
+const ponto_decolagem = document.getElementById(‘f-decolagem’).value.trim();
+
+if (!data_missao || !local_missao || !ponto_decolagem) {
+mostrarToast(‘Preencha data, local e ponto de decolagem.’, ‘erro’);
+return;
+}
+
+const body = { data_missao, local_missao, ponto_decolagem, voo_realizado: realizado };
+
+if (realizado) {
+body.horario_decolagem          = document.getElementById(‘f-hora-dec’).value || null;
+body.horario_retorno            = document.getElementById(‘f-hora-ret’).value || null;
+body.bateria_drone_decolagem    = parseInt(document.getElementById(‘f-drone-dec’).value) || null;
+body.bateria_drone_retorno      = parseInt(document.getElementById(‘f-drone-ret’).value) || null;
+body.bateria_controle_decolagem = parseInt(document.getElementById(‘f-ctrl-dec’).value)  || null;
+body.bateria_controle_retorno   = parseInt(document.getElementById(‘f-ctrl-ret’).value)  || null;
+} else {
+body.motivo_nao_realizacao = document.getElementById(‘f-motivo’).value.trim();
+if (!body.motivo_nao_realizacao) {
+mostrarToast(‘Informe o motivo da não realização.’, ‘erro’);
+return;
+}
+}
+
+try {
+await apiRequest(’/api/checklists’, ‘POST’, body);
+mostrarToast(‘✅ Checklist salvo com sucesso!’);
+renderNovoChecklist();
+} catch (e) {
+mostrarToast(e.message, ‘erro’);
+}
+}
+
+// ==========================================
+// PILOTO — MEUS VOOS
+// ==========================================
+async function renderMeusVoos() {
+const c = document.getElementById(‘conteudo-principal’);
+try {
+const data = await apiRequest(’/api/checklists/meus’);
+c.innerHTML = <div class="card"> <div class="card-header"> <div class="card-title">📂 Meus Registros</div> <span style="font-size:13px;color:var(--cinza)">${data.length} registro(s)</span> </div> ${data.length === 0 ?<div class="empty-state"><div class="icon">📋</div><p>Nenhum checklist registrado ainda.</p></div>:
+<div class="tabela-wrapper">
+<table>
+<thead>
+<tr>
+<th>Data</th><th>Local</th><th>Ponto Dec.</th>
+<th>H. Dec.</th><th>H. Ret.</th>
+<th>🔋 Drone Dec.</th><th>🔋 Drone Ret.</th><th>🔋 Drone Util.</th>
+<th>🎮 Ctrl Dec.</th><th>🎮 Ctrl Ret.</th><th>🎮 Ctrl Util.</th>
+<th>Voo</th><th>Motivo</th>
+</tr>
+</thead>
+<tbody>
+${data.map(r => <tr> <td>${formatarData(r.data_missao)}</td> <td>${r.local_missao}</td> <td>${r.ponto_decolagem}</td> <td>${formatarHora(r.horario_decolagem)}</td> <td>${formatarHora(r.horario_retorno)}</td> <td>${r.bateria_drone_decolagem  != null ? r.bateria_drone_decolagem  + '%' : '-'}</td> <td>${r.bateria_drone_retorno    != null ? r.bateria_drone_retorno    + '%' : '-'}</td> <td>${r.bateria_drone_utilizada  != null ? r.bateria_drone_utilizada  + '%' : '-'}</td> <td>${r.bateria_controle_decolagem != null ? r.bateria_controle_decolagem + '%' : '-'}</td> <td>${r.bateria_controle_retorno   != null ? r.bateria_controle_retorno   + '%' : '-'}</td> <td>${r.bateria_controle_utilizada != null ? r.bateria_controle_utilizada + '%' : '-'}</td> <td><span class="badge ${r.voo_realizado ? 'badge-sim' : 'badge-nao'}">${r.voo_realizado ? 'Sim' : 'Não'}</span></td> <td class="motivo-cell">${r.motivo_nao_realizacao || '-'}</td> </tr>).join(’’)}
+</tbody>
+</table>
+</div>} </div>;
+} catch (e) {
+mostrarToast(e.message, ‘erro’);
+}
+}
+
+// ==========================================
+// CCO — DASHBOARD
+// ==========================================
+async function renderDashboard() {
+const c = document.getElementById(‘conteudo-principal’);
+try {
+const data = await apiRequest(’/api/checklists’);
+const total         = data.length;
+const realizados    = data.filter(d => d.voo_realizado).length;
+const naoRealizados = total - realizados;
+const imunana       = data.filter(d => d.base === ‘IMUNANA’).length;
+const guandu        = data.filter(d => d.base === ‘GUANDU’).length;
+
+
+c.innerHTML = `
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-valor">${total}</div>
+      <div class="stat-label">Total de Registros</div>
+    </div>
+    <div class="stat-card" style="border-left-color:var(--verde-escuro)">
+      <div class="stat-valor">${realizados}</div>
+      <div class="stat-label">Voos Realizados</div>
+    </div>
+    <div class="stat-card" style="border-left-color:var(--vermelho)">
+      <div class="stat-valor">${naoRealizados}</div>
+      <div class="stat-label">Não Realizados</div>
+    </div>
+    <div class="stat-card" style="border-left-color:#1A56A0">
+      <div class="stat-valor">${imunana}</div>
+      <div class="stat-label">Base Imunana</div>
+    </div>
+    <div class="stat-card" style="border-left-color:#B45309">
+      <div class="stat-valor">${guandu}</div>
+      <div class="stat-label">Base Guandu</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title" style="margin-bottom:16px">📋 Últimos 10 Registros</div>
+    ${data.length === 0
+      ? `<div class="empty-state"><div class="icon">📋</div><p>Nenhum registro ainda.</p></div>`
+      : `
+      <div class="tabela-wrapper">
+        <table>
+          <thead>
+            <tr><th>Data</th><th>Piloto</th><th>Base</th><th>Local</th><th>Voo</th></tr>
+          </thead>
+          <tbody>
+            ${data.slice(0, 10).map(r => `
+              <tr>
+                <td>${formatarData(r.data_missao)}</td>
+                <td>${r.piloto_nome}</td>
+                <td><span class="badge ${r.base === 'IMUNANA' ? 'badge-imunana' : 'badge-guandu'}">${r.base}</span></td>
+                <td>${r.local_missao}</td>
+                <td><span class="badge ${r.voo_realizado ? 'badge-sim' : 'badge-nao'}">${r.voo_realizado ? 'Sim' : 'Não'}</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`
+    }
+  </div>
+`;
+
+
+} catch (e) {
+mostrarToast(e.message, ‘erro’);
+}
+}
+
+// ==========================================
+// CCO — TODOS OS CHECKLISTS
+// ==========================================
+async function renderTodosChecklists(filtros = {}) {
+const c = document.getElementById(‘conteudo-principal’);
+
+let pilotos = [];
+try { pilotos = await apiRequest(’/api/usuarios’); } catch(e) {}
+
+c.innerHTML = <div class="card" style="margin-bottom:16px"> <div class="card-title" style="margin-bottom:16px">🔍 Filtros</div> <div class="filtros"> <div class="form-group"> <label>Base</label> <select id="fil-base"> <option value="">Todas</option> <option value="IMUNANA" ${filtros.base === 'IMUNANA' ? 'selected' : ''}>Imunana</option> <option value="GUANDU"  ${filtros.base === 'GUANDU'  ? 'selected' : ''}>Guandu</option> </select> </div> <div class="form-group"> <label>Piloto</label> <select id="fil-piloto"> <option value="">Todos</option> ${pilotos.filter(p => p.perfil === 'piloto').map(p =><option value=”${p.id}” ${filtros.piloto_id === p.id ? ‘selected’ : ‘’}>${p.nome}</option>).join('')} </select> </div> <div class="form-group"> <label>Data Início</label> <input type="date" id="fil-inicio" value="${filtros.data_inicio || ''}" /> </div> <div class="form-group"> <label>Data Fim</label> <input type="date" id="fil-fim" value="${filtros.data_fim || ''}" /> </div> <button class="btn btn-primary btn-sm" onclick="aplicarFiltros()">Filtrar</button> </div> <div class="export-row"> <button class="btn-export" onclick="exportar('pdf')">📄 Exportar PDF</button> <button class="btn-export" onclick="exportar('excel')">📊 Exportar Excel</button> </div> </div> <div id="tabela-checklists"> <div class="loading"><div class="spinner"></div>Carregando...</div> </div>;
+
+await carregarTabelaChecklists(filtros);
+}
+
+async function aplicarFiltros() {
+const filtros = {
+base:        document.getElementById(‘fil-base’).value,
+piloto_id:   document.getElementById(‘fil-piloto’).value,
+data_inicio: document.getElementById(‘fil-inicio’).value,
+data_fim:    document.getElementById(‘fil-fim’).value
+};
+await carregarTabelaChecklists(filtros);
+}
+
+async function carregarTabelaChecklists(filtros = {}) {
+const t = document.getElementById(‘tabela-checklists’);
+if (!t) return;
+try {
+const params = new URLSearchParams();
+if (filtros.base)        params.set(‘base’, filtros.base);
+if (filtros.piloto_id)   params.set(‘piloto_id’, filtros.piloto_id);
+if (filtros.data_inicio) params.set(‘data_inicio’, filtros.data_inicio);
+if (filtros.data_fim)    params.set(‘data_fim’, filtros.data_fim);
+
+
+const data = await apiRequest(`/api/checklists?${params.toString()}`);
+
+t.innerHTML = `
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">📂 Registros</div>
+      <span style="font-size:13px;color:var(--cinza)">${data.length} registro(s)</span>
+    </div>
+    ${data.length === 0
+      ? `<div class="empty-state"><div class="icon">🔍</div><p>Nenhum resultado encontrado.</p></div>`
+      : `
+      <div class="tabela-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th><th>Piloto</th><th>Base</th><th>Local</th><th>Ponto Dec.</th>
+              <th>H. Dec.</th><th>H. Ret.</th>
+              <th>🔋 Dec.</th><th>🔋 Ret.</th><th>🔋 Util.</th>
+              <th>🎮 Dec.</th><th>🎮 Ret.</th><th>🎮 Util.</th>
+              <th>Voo</th><th>Motivo</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${data.map(r => `
+              <tr>
+                <td>${formatarData(r.data_missao)}</td>
+                <td>${r.piloto_nome}</td>
+                <td><span class="badge ${r.base === 'IMUNANA' ? 'badge-imunana' : 'badge-guandu'}">${r.base}</span></td>
+                <td>${r.local_missao}</td>
+                <td>${r.ponto_decolagem}</td>
+                <td>${formatarHora(r.horario_decolagem)}</td>
+                <td>${formatarHora(r.horario_retorno)}</td>
+                <td>${r.bateria_drone_decolagem    != null ? r.bateria_drone_decolagem    + '%' : '-'}</td>
+                <td>${r.bateria_drone_retorno      != null ? r.bateria_drone_retorno      + '%' : '-'}</td>
+                <td>${r.bateria_drone_utilizada    != null ? r.bateria_drone_utilizada    + '%' : '-'}</td>
+                <td>${r.bateria_controle_decolagem != null ? r.bateria_controle_decolagem + '%' : '-'}</td>
+                <td>${r.bateria_controle_retorno   != null ? r.bateria_controle_retorno   + '%' : '-'}</td>
+                <td>${r.bateria_controle_utilizada != null ? r.bateria_controle_utilizada + '%' : '-'}</td>
+                <td><span class="badge ${r.voo_realizado ? 'badge-sim' : 'badge-nao'}">${r.voo_realizado ? 'Sim' : 'Não'}</span></td>
+                <td class="motivo-cell">${r.motivo_nao_realizacao || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`
+    }
+  </div>
+`;
+
+
+} catch (e) {
+mostrarToast(e.message, ‘erro’);
+}
+}
+
+function exportar(tipo) {
+const params = new URLSearchParams();
+const base   = document.getElementById(‘fil-base’)?.value;
+const piloto = document.getElementById(‘fil-piloto’)?.value;
+const inicio = document.getElementById(‘fil-inicio’)?.value;
+const fim    = document.getElementById(‘fil-fim’)?.value;
+if (base)   params.set(‘base’, base);
+if (piloto) params.set(‘piloto_id’, piloto);
+if (inicio) params.set(‘data_inicio’, inicio);
+if (fim)    params.set(‘data_fim’, fim);
+
+fetch(/api/exportar/${tipo}?${params.toString()}, {
+headers: { Authorization: Bearer ${token} }
+})
+.then(r => r.blob())
+.then(blob => {
+const link = document.createElement(‘a’);
+link.href = URL.createObjectURL(blob);
+link.download = tipo === ‘pdf’ ? ‘relatorio-checklists.pdf’ : ‘relatorio-checklists.xlsx’;
+link.click();
+})
+.catch(() => mostrarToast(‘Erro ao exportar’, ‘erro’));
+}
+
+// ==========================================
+// CCO — GERENCIAR USUÁRIOS
+// ==========================================
+async function renderUsuarios() {
+const c = document.getElementById(‘conteudo-principal’);
+try {
+const data = await apiRequest(’/api/usuarios’);
+c.innerHTML = `
+<div class="card" style="margin-bottom:20px">
+<div class="card-title" style="margin-bottom:20px">➕ Cadastrar Novo Usuário</div>
+<div class="form-row">
+<div class="form-group">
+<label>Nome Completo *</label>
+<input type="text" id="u-nome" placeholder="Nome do piloto" />
+</div>
+<div class="form-group">
+<label>Email *</label>
+<input type="email" id="u-email" placeholder="email@empresa.com" />
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>Senha *</label>
+<input type="password" id="u-senha" placeholder="Mínimo 6 caracteres" />
+</div>
+<div class="form-group">
+<label>Perfil *</label>
+<select id="u-perfil" onchange="toggleBaseCadastro()">
+<option value="piloto">Piloto</option>
+<option value="cco">CCO</option>
+</select>
+</div>
+</div>
+<div class="form-group" id="u-base-group">
+<label>Base *</label>
+<select id="u-base">
+<option value="IMUNANA">Imunana</option>
+<option value="GUANDU">Guandu</option>
+</select>
+</div>
+<button class="btn btn-primary btn-sm" style="width:auto" onclick="cadastrarUsuario()">Cadastrar</button>
+</div>
+
+
+  <div class="card">
+    <div class="card-title" style="margin-bottom:16px">👥 Usuários Cadastrados</div>
+    <div class="tabela-wrapper">
+      <table>
+        <thead>
+          <tr><th>Nome</th><th>Email</th><th>Perfil</th><th>Base</th><th>Status</th><th>Ações</th></tr>
+        </thead>
+        <tbody>
+          ${data.map(u => `
+            <tr>
+              <td>${u.nome}</td>
+              <td>${u.email}</td>
+              <td>${u.perfil === 'cco' ? 'CCO' : 'Piloto'}</td>
+              <td>${u.base || '-'}</td>
+              <td><span class="badge ${u.ativo ? 'badge-sim' : 'badge-nao'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
+              <td>${u.ativo
+                ? `<button class="btn btn-danger btn-sm" onclick="desativarUsuario('${u.id}', '${u.nome}')">Desativar</button>`
+                : '-'}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+`;
+
+
+} catch (e) {
+mostrarToast(e.message, ‘erro’);
+}
+}
+
+function toggleBaseCadastro() {
+const perfil = document.getElementById(‘u-perfil’).value;
+document.getElementById(‘u-base-group’).style.display = perfil === ‘piloto’ ? ‘block’ : ‘none’;
+}
+
+async function cadastrarUsuario() {
+const perfil = document.getElementById(‘u-perfil’).value;
+const body = {
+nome:   document.getElementById(‘u-nome’).value.trim(),
+email:  document.getElementById(‘u-email’).value.trim(),
+senha:  document.getElementById(‘u-senha’).value,
+perfil,
+base: perfil === ‘piloto’ ? document.getElementById(‘u-base’).value : null
+};
+
+if (!body.nome || !body.email || !body.senha) {
+mostrarToast(‘Preencha todos os campos obrigatórios.’, ‘erro’);
+return;
+}
+
+try {
+await apiRequest(’/api/usuarios’, ‘POST’, body);
+mostrarToast(‘✅ Usuário cadastrado com sucesso!’);
+renderUsuarios();
+} catch (e) {
+mostrarToast(e.message, ‘erro’);
+}
+}
+
+async function desativarUsuario(id, nome) {
+if (!confirm(Desativar o usuário "${nome}"?)) return;
+try {
+await apiRequest(/api/usuarios/${id}, ‘DELETE’);
+mostrarToast(‘Usuário desativado.’);
+renderUsuarios();
+} catch (e) {
+mostrarToast(e.message, ‘erro’);
+}
+}
+
+// ==========================================
+// INICIALIZAÇÃO
+// ==========================================
+window.onload = () => {
+const savedToken = localStorage.getItem(‘token’);
+const savedUser  = localStorage.getItem(‘usuario’);
+if (savedToken && savedUser) {
+token   = savedToken;
+usuario = JSON.parse(savedUser);
+iniciarApp();
+}
+};
+</script>
+
+</body>
+</html>
