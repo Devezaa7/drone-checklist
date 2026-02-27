@@ -60,4 +60,4 @@ router.delete('/:id', autenticar, apenasCCO, async (req, res) => {
   if (error) return res.status(500).json({ erro: error.message });
   res.json({ mensagem: 'Usuário desativado com sucesso' });
 });
-module.exports = routerx
+module.exports = router;
