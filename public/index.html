@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -9,8 +8,6 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<!-- ===== TELA DE LOGIN ===== -->
 
 <div id="tela-login">
   <div class="login-card">
@@ -32,8 +29,6 @@
     <div class="erro-msg" id="login-erro"></div>
   </div>
 </div>
-
-<!-- ===== APP PRINCIPAL ===== -->
 
 <div id="app">
   <nav class="navbar">
@@ -58,16 +53,16 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ==========================================
-// ESTADO GLOBAL
-// ==========================================
+
+
+
 let usuario = null;
 let token   = null;
 let abaAtiva = '';
 
-// ==========================================
-// UTILITÁRIOS
-// ==========================================
+
+
+
 function mostrarToast(msg, tipo = 'ok') {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -91,7 +86,7 @@ async function apiRequest(url, method = 'GET', body = null) {
     method,
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': Bearer ${token}
+      'Authorization': `Bearer ${token}`
     }
   };
   if (body) opts.body = JSON.stringify(body);
@@ -101,9 +96,9 @@ async function apiRequest(url, method = 'GET', body = null) {
   return data;
 }
 
-// ==========================================
-// AUTH
-// ==========================================
+
+
+
 async function fazerLogin() {
   const email  = document.getElementById('login-email').value.trim();
   const senha  = document.getElementById('login-senha').value;
@@ -144,9 +139,9 @@ function logout() {
   document.getElementById('tela-login').style.display = 'flex';
 }
 
-// ==========================================
-// INICIAR APP
-// ==========================================
+
+
+
 function iniciarApp() {
   document.getElementById('tela-login').style.display = 'none';
   document.getElementById('app').style.display = 'block';
@@ -198,9 +193,9 @@ function mostrarAba(id) {
   else if (id === 'gerenciar-usuarios') renderUsuarios();
 }
 
-// ==========================================
-// PILOTO — NOVO CHECKLIST
-// ==========================================
+
+
+
 function renderNovoChecklist() {
   const c = document.getElementById('conteudo-principal');
   c.innerHTML = `
@@ -288,414 +283,459 @@ function renderNovoChecklist() {
         <div class="form-group">
           <label>Descreva o motivo *</label>
           <textarea id="f-motivo" placeholder="Ex: Condições meteorológicas adversas, chuva intensa..."></textarea>
+        </div>
+      </div>
 
-
+      <button class="btn btn-primary" style="margin-top:8px" onclick="salvarChecklist()">✅ Salvar Checklist</button>
     </div>
-  </div>
+  `;
 
-  <button class="btn btn-primary" style="margin-top:8px" onclick="salvarChecklist()">✅ Salvar Checklist</button>
-</div>
-
-
-`;
-
-document.getElementById(‘f-data’).value = new Date().toISOString().split(‘T’)[0];
+  document.getElementById('f-data').value = new Date().toISOString().split('T')[0];
 }
 
 function toggleVooRealizado() {
-const realizado = document.getElementById(‘voo-realizado’).checked;
-document.getElementById(‘campos-voo’).style.display    = realizado ? ‘block’ : ‘none’;
-document.getElementById(‘campo-motivo’).style.display  = realizado ? ‘none’  : ‘block’;
-document.getElementById(‘voo-status-label’).textContent = realizado ? ‘Sim’ : ‘Não’;
-document.getElementById('voo-status-label').style.color = realizado ? 'var(-verde)' : 'var(-vermelho)';
+  const realizado = document.getElementById('voo-realizado').checked;
+  document.getElementById('campos-voo').style.display    = realizado ? 'block' : 'none';
+  document.getElementById('campo-motivo').style.display  = realizado ? 'none'  : 'block';
+  document.getElementById('voo-status-label').textContent = realizado ? 'Sim' : 'Não';
+  document.getElementById('voo-status-label').style.color = realizado ? 'var(--verde)' : 'var(--vermelho)';
 }
 
 function calcBateria(tipo) {
-const dec = parseFloat(document.getElementById(`f-${tipo}-dec`).value);
-const ret = parseFloat(document.getElementById(`f-${tipo}-ret`).value);
-if (!isNaN(dec) && !isNaN(ret)) {
-document.getElementById(`f-${tipo}-util`).value = Math.max(0, dec - ret);
-}
+  const dec = parseFloat(document.getElementById(`f-${tipo}-dec`).value);
+  const ret = parseFloat(document.getElementById(`f-${tipo}-ret`).value);
+  if (!isNaN(dec) && !isNaN(ret)) {
+    document.getElementById(`f-${tipo}-util`).value = Math.max(0, dec - ret);
+  }
 }
 
 async function salvarChecklist() {
-const realizado      = document.getElementById(‘voo-realizado’).checked;
-const data_missao    = document.getElementById(‘f-data’).value;
-const local_missao   = document.getElementById(‘f-local’).value.trim();
-const ponto_decolagem = document.getElementById(‘f-decolagem’).value.trim();
+  const realizado       = document.getElementById('voo-realizado').checked;
+  const data_missao     = document.getElementById('f-data').value;
+  const local_missao    = document.getElementById('f-local').value.trim();
+  const ponto_decolagem = document.getElementById('f-decolagem').value.trim();
 
-if (!data_missao || !local_missao || !ponto_decolagem) {
-mostrarToast(‘Preencha data, local e ponto de decolagem.’, ‘erro’);
-return;
-}
+  if (!data_missao || !local_missao || !ponto_decolagem) {
+    mostrarToast('Preencha data, local e ponto de decolagem.', 'erro');
+    return;
+  }
 
-const body = { data_missao, local_missao, ponto_decolagem, voo_realizado: realizado };
+  const body = { data_missao, local_missao, ponto_decolagem, voo_realizado: realizado };
 
-if (realizado) {
-body.horario_decolagem          = document.getElementById(‘f-hora-dec’).value || null;
-body.horario_retorno            = document.getElementById(‘f-hora-ret’).value || null;
-body.bateria_drone_decolagem    = parseInt(document.getElementById(‘f-drone-dec’).value) || null;
-body.bateria_drone_retorno      = parseInt(document.getElementById(‘f-drone-ret’).value) || null;
-body.bateria_controle_decolagem = parseInt(document.getElementById(‘f-ctrl-dec’).value)  || null;
-body.bateria_controle_retorno   = parseInt(document.getElementById(‘f-ctrl-ret’).value)  || null;
-} else {
-body.motivo_nao_realizacao = document.getElementById(‘f-motivo’).value.trim();
-if (!body.motivo_nao_realizacao) {
-mostrarToast(‘Informe o motivo da não realização.’, ‘erro’);
-return;
-}
-}
-
-try {
-await apiRequest(’/api/checklists’, ‘POST’, body);
-mostrarToast(‘✅ Checklist salvo com sucesso!’);
-renderNovoChecklist();
-} catch (e) {
-mostrarToast(e.message, ‘erro’);
-}
-}
-
-// ==========================================
-// PILOTO — MEUS VOOS
-// ==========================================
-async function renderMeusVoos() {
-const c = document.getElementById(‘conteudo-principal’);
-try {
-const data = await apiRequest(’/api/checklists/meus’);
-c.innerHTML = <div class="card"> <div class="card-header"> <div class="card-title">📂 Meus Registros</div> <span style="font-size:13px;color:var(--cinza)">${data.length} registro(s)</span> </div> ${data.length === 0 ?<div class="empty-state"><div class="icon">📋</div><p>Nenhum checklist registrado ainda.</p></div>:
-<div class="tabela-wrapper">
-<table>
-<thead>
-<tr>
-<th>Data</th><th>Local</th><th>Ponto Dec.</th>
-<th>H. Dec.</th><th>H. Ret.</th>
-<th>🔋 Drone Dec.</th><th>🔋 Drone Ret.</th><th>🔋 Drone Util.</th>
-<th>🎮 Ctrl Dec.</th><th>🎮 Ctrl Ret.</th><th>🎮 Ctrl Util.</th>
-<th>Voo</th><th>Motivo</th>
-</tr>
-</thead>
-<tbody>
-${data.map(r => <tr> <td>${formatarData(r.data_missao)}</td> <td>${r.local_missao}</td> <td>${r.ponto_decolagem}</td> <td>${formatarHora(r.horario_decolagem)}</td> <td>${formatarHora(r.horario_retorno)}</td> <td>${r.bateria_drone_decolagem  != null ? r.bateria_drone_decolagem  + '%' : '-'}</td> <td>${r.bateria_drone_retorno    != null ? r.bateria_drone_retorno    + '%' : '-'}</td> <td>${r.bateria_drone_utilizada  != null ? r.bateria_drone_utilizada  + '%' : '-'}</td> <td>${r.bateria_controle_decolagem != null ? r.bateria_controle_decolagem + '%' : '-'}</td> <td>${r.bateria_controle_retorno   != null ? r.bateria_controle_retorno   + '%' : '-'}</td> <td>${r.bateria_controle_utilizada != null ? r.bateria_controle_utilizada + '%' : '-'}</td> <td><span class="badge ${r.voo_realizado ? 'badge-sim' : 'badge-nao'}">${r.voo_realizado ? 'Sim' : 'Não'}</span></td> <td class="motivo-cell">${r.motivo_nao_realizacao || '-'}</td> </tr>).join(’’)}
-</tbody>
-</table>
-</div>} </div>;
-} catch (e) {
-mostrarToast(e.message, ‘erro’);
-}
-}
-
-// ==========================================
-// CCO — DASHBOARD
-// ==========================================
-async function renderDashboard() {
-const c = document.getElementById(‘conteudo-principal’);
-try {
-const data = await apiRequest(’/api/checklists’);
-const total         = data.length;
-const realizados    = data.filter(d => d.voo_realizado).length;
-const naoRealizados = total - realizados;
-const imunana       = data.filter(d => d.base === ‘IMUNANA’).length;
-const guandu        = data.filter(d => d.base === ‘GUANDU’).length;
-
-
-c.innerHTML = `
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-valor">${total}</div>
-      <div class="stat-label">Total de Registros</div>
-    </div>
-    <div class="stat-card" style="border-left-color:var(--verde-escuro)">
-      <div class="stat-valor">${realizados}</div>
-      <div class="stat-label">Voos Realizados</div>
-    </div>
-    <div class="stat-card" style="border-left-color:var(--vermelho)">
-      <div class="stat-valor">${naoRealizados}</div>
-      <div class="stat-label">Não Realizados</div>
-    </div>
-    <div class="stat-card" style="border-left-color:#1A56A0">
-      <div class="stat-valor">${imunana}</div>
-      <div class="stat-label">Base Imunana</div>
-    </div>
-    <div class="stat-card" style="border-left-color:#B45309">
-      <div class="stat-valor">${guandu}</div>
-      <div class="stat-label">Base Guandu</div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title" style="margin-bottom:16px">📋 Últimos 10 Registros</div>
-    ${data.length === 0
-      ? `<div class="empty-state"><div class="icon">📋</div><p>Nenhum registro ainda.</p></div>`
-      : `
-      <div class="tabela-wrapper">
-        <table>
-          <thead>
-            <tr><th>Data</th><th>Piloto</th><th>Base</th><th>Local</th><th>Voo</th></tr>
-          </thead>
-          <tbody>
-            ${data.slice(0, 10).map(r => `
-              <tr>
-                <td>${formatarData(r.data_missao)}</td>
-                <td>${r.piloto_nome}</td>
-                <td><span class="badge ${r.base === 'IMUNANA' ? 'badge-imunana' : 'badge-guandu'}">${r.base}</span></td>
-                <td>${r.local_missao}</td>
-                <td><span class="badge ${r.voo_realizado ? 'badge-sim' : 'badge-nao'}">${r.voo_realizado ? 'Sim' : 'Não'}</span></td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>`
+  if (realizado) {
+    body.horario_decolagem          = document.getElementById('f-hora-dec').value || null;
+    body.horario_retorno            = document.getElementById('f-hora-ret').value || null;
+    body.bateria_drone_decolagem    = parseInt(document.getElementById('f-drone-dec').value) || null;
+    body.bateria_drone_retorno      = parseInt(document.getElementById('f-drone-ret').value) || null;
+    body.bateria_controle_decolagem = parseInt(document.getElementById('f-ctrl-dec').value)  || null;
+    body.bateria_controle_retorno   = parseInt(document.getElementById('f-ctrl-ret').value)  || null;
+  } else {
+    body.motivo_nao_realizacao = document.getElementById('f-motivo').value.trim();
+    if (!body.motivo_nao_realizacao) {
+      mostrarToast('Informe o motivo da não realização.', 'erro');
+      return;
     }
-  </div>
-`;
+  }
 
-
-} catch (e) {
-mostrarToast(e.message, ‘erro’);
+  try {
+    await apiRequest('/api/checklists', 'POST', body);
+    mostrarToast('✅ Checklist salvo com sucesso!');
+    renderNovoChecklist();
+  } catch (e) {
+    mostrarToast(e.message, 'erro');
+  }
 }
+
+
+
+
+async function renderMeusVoos() {
+  const c = document.getElementById('conteudo-principal');
+  try {
+    const data = await apiRequest('/api/checklists/meus');
+    c.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📂 Meus Registros</div>
+          <span style="font-size:13px;color:var(--cinza)">${data.length} registro(s)</span>
+        </div>
+        ${data.length === 0
+          ? `<div class="empty-state"><div class="icon">📋</div><p>Nenhum checklist registrado ainda.</p></div>`
+          : `<div class="tabela-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th><th>Local</th><th>Ponto Dec.</th>
+                    <th>H. Dec.</th><th>H. Ret.</th>
+                    <th>🔋 Drone Dec.</th><th>🔋 Drone Ret.</th><th>🔋 Drone Util.</th>
+                    <th>🎮 Ctrl Dec.</th><th>🎮 Ctrl Ret.</th><th>🎮 Ctrl Util.</th>
+                    <th>Voo</th><th>Motivo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data.map(r => `
+                    <tr>
+                      <td>${formatarData(r.data_missao)}</td>
+                      <td>${r.local_missao}</td>
+                      <td>${r.ponto_decolagem}</td>
+                      <td>${formatarHora(r.horario_decolagem)}</td>
+                      <td>${formatarHora(r.horario_retorno)}</td>
+                      <td>${r.bateria_drone_decolagem   != null ? r.bateria_drone_decolagem   + '%' : '-'}</td>
+                      <td>${r.bateria_drone_retorno     != null ? r.bateria_drone_retorno     + '%' : '-'}</td>
+                      <td>${r.bateria_drone_utilizada   != null ? r.bateria_drone_utilizada   + '%' : '-'}</td>
+                      <td>${r.bateria_controle_decolagem != null ? r.bateria_controle_decolagem + '%' : '-'}</td>
+                      <td>${r.bateria_controle_retorno   != null ? r.bateria_controle_retorno   + '%' : '-'}</td>
+                      <td>${r.bateria_controle_utilizada != null ? r.bateria_controle_utilizada + '%' : '-'}</td>
+                      <td><span class="badge ${r.voo_realizado ? 'badge-sim' : 'badge-nao'}">${r.voo_realizado ? 'Sim' : 'Não'}</span></td>
+                      <td class="motivo-cell">${r.motivo_nao_realizacao || '-'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>`
+        }
+      </div>`;
+  } catch (e) {
+    mostrarToast(e.message, 'erro');
+  }
 }
 
-// ==========================================
-// CCO — TODOS OS CHECKLISTS
-// ==========================================
+
+
+
+async function renderDashboard() {
+  const c = document.getElementById('conteudo-principal');
+  try {
+    const data = await apiRequest('/api/checklists');
+    const total         = data.length;
+    const realizados    = data.filter(d => d.voo_realizado).length;
+    const naoRealizados = total - realizados;
+    const imunana       = data.filter(d => d.base === 'IMUNANA').length;
+    const guandu        = data.filter(d => d.base === 'GUANDU').length;
+
+    c.innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-valor">${total}</div>
+          <div class="stat-label">Total de Registros</div>
+        </div>
+        <div class="stat-card" style="border-left-color:var(--verde-escuro)">
+          <div class="stat-valor">${realizados}</div>
+          <div class="stat-label">Voos Realizados</div>
+        </div>
+        <div class="stat-card" style="border-left-color:var(--vermelho)">
+          <div class="stat-valor">${naoRealizados}</div>
+          <div class="stat-label">Não Realizados</div>
+        </div>
+        <div class="stat-card" style="border-left-color:#1A56A0">
+          <div class="stat-valor">${imunana}</div>
+          <div class="stat-label">Base Imunana</div>
+        </div>
+        <div class="stat-card" style="border-left-color:#B45309">
+          <div class="stat-valor">${guandu}</div>
+          <div class="stat-label">Base Guandu</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">📋 Últimos 10 Registros</div>
+        ${data.length === 0
+          ? `<div class="empty-state"><div class="icon">📋</div><p>Nenhum registro ainda.</p></div>`
+          : `<div class="tabela-wrapper">
+              <table>
+                <thead>
+                  <tr><th>Data</th><th>Piloto</th><th>Base</th><th>Local</th><th>Voo</th></tr>
+                </thead>
+                <tbody>
+                  ${data.slice(0, 10).map(r => `
+                    <tr>
+                      <td>${formatarData(r.data_missao)}</td>
+                      <td>${r.piloto_nome}</td>
+                      <td><span class="badge ${r.base === 'IMUNANA' ? 'badge-imunana' : 'badge-guandu'}">${r.base}</span></td>
+                      <td>${r.local_missao}</td>
+                      <td><span class="badge ${r.voo_realizado ? 'badge-sim' : 'badge-nao'}">${r.voo_realizado ? 'Sim' : 'Não'}</span></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>`
+        }
+      </div>`;
+  } catch (e) {
+    mostrarToast(e.message, 'erro');
+  }
+}
+
+
+
+
 async function renderTodosChecklists(filtros = {}) {
-const c = document.getElementById(‘conteudo-principal’);
+  const c = document.getElementById('conteudo-principal');
 
-let pilotos = [];
-try { pilotos = await apiRequest(’/api/usuarios’); } catch(e) {}
+  let pilotos = [];
+  try { pilotos = await apiRequest('/api/usuarios'); } catch(e) {}
 
-c.innerHTML = <div class="card" style="margin-bottom:16px"> <div class="card-title" style="margin-bottom:16px">🔍 Filtros</div> <div class="filtros"> <div class="form-group"> <label>Base</label> <select id="fil-base"> <option value="">Todas</option> <option value="IMUNANA" ${filtros.base === 'IMUNANA' ? 'selected' : ''}>Imunana</option> <option value="GUANDU"  ${filtros.base === 'GUANDU'  ? 'selected' : ''}>Guandu</option> </select> </div> <div class="form-group"> <label>Piloto</label> <select id="fil-piloto"> <option value="">Todos</option> ${pilotos.filter(p => p.perfil === 'piloto').map(p =><option value=”${p.id}” ${filtros.piloto_id === p.id ? ‘selected’ : ‘’}>${p.nome}</option>).join('')} </select> </div> <div class="form-group"> <label>Data Início</label> <input type="date" id="fil-inicio" value="${filtros.data_inicio || ''}" /> </div> <div class="form-group"> <label>Data Fim</label> <input type="date" id="fil-fim" value="${filtros.data_fim || ''}" /> </div> <button class="btn btn-primary btn-sm" onclick="aplicarFiltros()">Filtrar</button> </div> <div class="export-row"> <button class="btn-export" onclick="exportar('pdf')">📄 Exportar PDF</button> <button class="btn-export" onclick="exportar('excel')">📊 Exportar Excel</button> </div> </div> <div id="tabela-checklists"> <div class="loading"><div class="spinner"></div>Carregando...</div> </div>;
+  c.innerHTML = `
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:16px">🔍 Filtros</div>
+      <div class="filtros">
+        <div class="form-group">
+          <label>Base</label>
+          <select id="fil-base">
+            <option value="">Todas</option>
+            <option value="IMUNANA" ${filtros.base === 'IMUNANA' ? 'selected' : ''}>Imunana</option>
+            <option value="GUANDU"  ${filtros.base === 'GUANDU'  ? 'selected' : ''}>Guandu</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Piloto</label>
+          <select id="fil-piloto">
+            <option value="">Todos</option>
+            ${pilotos.filter(p => p.perfil === 'piloto').map(p =>
+              `<option value="${p.id}" ${filtros.piloto_id === p.id ? 'selected' : ''}>${p.nome}</option>`
+            ).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Data Início</label>
+          <input type="date" id="fil-inicio" value="${filtros.data_inicio || ''}" />
+        </div>
+        <div class="form-group">
+          <label>Data Fim</label>
+          <input type="date" id="fil-fim" value="${filtros.data_fim || ''}" />
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="aplicarFiltros()">Filtrar</button>
+      </div>
+      <div class="export-row">
+        <button class="btn-export" onclick="exportar('pdf')">📄 Exportar PDF</button>
+        <button class="btn-export" onclick="exportar('excel')">📊 Exportar Excel</button>
+      </div>
+    </div>
+    <div id="tabela-checklists">
+      <div class="loading"><div class="spinner"></div>Carregando...</div>
+    </div>`;
 
-await carregarTabelaChecklists(filtros);
+  await carregarTabelaChecklists(filtros);
 }
 
 async function aplicarFiltros() {
-const filtros = {
-base:        document.getElementById(‘fil-base’).value,
-piloto_id:   document.getElementById(‘fil-piloto’).value,
-data_inicio: document.getElementById(‘fil-inicio’).value,
-data_fim:    document.getElementById(‘fil-fim’).value
-};
-await carregarTabelaChecklists(filtros);
+  const filtros = {
+    base:        document.getElementById('fil-base').value,
+    piloto_id:   document.getElementById('fil-piloto').value,
+    data_inicio: document.getElementById('fil-inicio').value,
+    data_fim:    document.getElementById('fil-fim').value
+  };
+  await carregarTabelaChecklists(filtros);
 }
 
 async function carregarTabelaChecklists(filtros = {}) {
-const t = document.getElementById(‘tabela-checklists’);
-if (!t) return;
-try {
-const params = new URLSearchParams();
-if (filtros.base)        params.set(‘base’, filtros.base);
-if (filtros.piloto_id)   params.set(‘piloto_id’, filtros.piloto_id);
-if (filtros.data_inicio) params.set(‘data_inicio’, filtros.data_inicio);
-if (filtros.data_fim)    params.set(‘data_fim’, filtros.data_fim);
+  const t = document.getElementById('tabela-checklists');
+  if (!t) return;
+  try {
+    const params = new URLSearchParams();
+    if (filtros.base)        params.set('base', filtros.base);
+    if (filtros.piloto_id)   params.set('piloto_id', filtros.piloto_id);
+    if (filtros.data_inicio) params.set('data_inicio', filtros.data_inicio);
+    if (filtros.data_fim)    params.set('data_fim', filtros.data_fim);
 
+    const data = await apiRequest(`/api/checklists?${params.toString()}`);
 
-const data = await apiRequest(`/api/checklists?${params.toString()}`);
-
-t.innerHTML = `
-  <div class="card">
-    <div class="card-header">
-      <div class="card-title">📂 Registros</div>
-      <span style="font-size:13px;color:var(--cinza)">${data.length} registro(s)</span>
-    </div>
-    ${data.length === 0
-      ? `<div class="empty-state"><div class="icon">🔍</div><p>Nenhum resultado encontrado.</p></div>`
-      : `
-      <div class="tabela-wrapper">
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th><th>Piloto</th><th>Base</th><th>Local</th><th>Ponto Dec.</th>
-              <th>H. Dec.</th><th>H. Ret.</th>
-              <th>🔋 Dec.</th><th>🔋 Ret.</th><th>🔋 Util.</th>
-              <th>🎮 Dec.</th><th>🎮 Ret.</th><th>🎮 Util.</th>
-              <th>Voo</th><th>Motivo</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${data.map(r => `
-              <tr>
-                <td>${formatarData(r.data_missao)}</td>
-                <td>${r.piloto_nome}</td>
-                <td><span class="badge ${r.base === 'IMUNANA' ? 'badge-imunana' : 'badge-guandu'}">${r.base}</span></td>
-                <td>${r.local_missao}</td>
-                <td>${r.ponto_decolagem}</td>
-                <td>${formatarHora(r.horario_decolagem)}</td>
-                <td>${formatarHora(r.horario_retorno)}</td>
-                <td>${r.bateria_drone_decolagem    != null ? r.bateria_drone_decolagem    + '%' : '-'}</td>
-                <td>${r.bateria_drone_retorno      != null ? r.bateria_drone_retorno      + '%' : '-'}</td>
-                <td>${r.bateria_drone_utilizada    != null ? r.bateria_drone_utilizada    + '%' : '-'}</td>
-                <td>${r.bateria_controle_decolagem != null ? r.bateria_controle_decolagem + '%' : '-'}</td>
-                <td>${r.bateria_controle_retorno   != null ? r.bateria_controle_retorno   + '%' : '-'}</td>
-                <td>${r.bateria_controle_utilizada != null ? r.bateria_controle_utilizada + '%' : '-'}</td>
-                <td><span class="badge ${r.voo_realizado ? 'badge-sim' : 'badge-nao'}">${r.voo_realizado ? 'Sim' : 'Não'}</span></td>
-                <td class="motivo-cell">${r.motivo_nao_realizacao || '-'}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>`
-    }
-  </div>
-`;
-
-
-} catch (e) {
-mostrarToast(e.message, ‘erro’);
-}
+    t.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📂 Registros</div>
+          <span style="font-size:13px;color:var(--cinza)">${data.length} registro(s)</span>
+        </div>
+        ${data.length === 0
+          ? `<div class="empty-state"><div class="icon">🔍</div><p>Nenhum resultado encontrado.</p></div>`
+          : `<div class="tabela-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th><th>Piloto</th><th>Base</th><th>Local</th><th>Ponto Dec.</th>
+                    <th>H. Dec.</th><th>H. Ret.</th>
+                    <th>🔋 Dec.</th><th>🔋 Ret.</th><th>🔋 Util.</th>
+                    <th>🎮 Dec.</th><th>🎮 Ret.</th><th>🎮 Util.</th>
+                    <th>Voo</th><th>Motivo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data.map(r => `
+                    <tr>
+                      <td>${formatarData(r.data_missao)}</td>
+                      <td>${r.piloto_nome}</td>
+                      <td><span class="badge ${r.base === 'IMUNANA' ? 'badge-imunana' : 'badge-guandu'}">${r.base}</span></td>
+                      <td>${r.local_missao}</td>
+                      <td>${r.ponto_decolagem}</td>
+                      <td>${formatarHora(r.horario_decolagem)}</td>
+                      <td>${formatarHora(r.horario_retorno)}</td>
+                      <td>${r.bateria_drone_decolagem    != null ? r.bateria_drone_decolagem    + '%' : '-'}</td>
+                      <td>${r.bateria_drone_retorno      != null ? r.bateria_drone_retorno      + '%' : '-'}</td>
+                      <td>${r.bateria_drone_utilizada    != null ? r.bateria_drone_utilizada    + '%' : '-'}</td>
+                      <td>${r.bateria_controle_decolagem != null ? r.bateria_controle_decolagem + '%' : '-'}</td>
+                      <td>${r.bateria_controle_retorno   != null ? r.bateria_controle_retorno   + '%' : '-'}</td>
+                      <td>${r.bateria_controle_utilizada != null ? r.bateria_controle_utilizada + '%' : '-'}</td>
+                      <td><span class="badge ${r.voo_realizado ? 'badge-sim' : 'badge-nao'}">${r.voo_realizado ? 'Sim' : 'Não'}</span></td>
+                      <td class="motivo-cell">${r.motivo_nao_realizacao || '-'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>`
+        }
+      </div>`;
+  } catch (e) {
+    mostrarToast(e.message, 'erro');
+  }
 }
 
 function exportar(tipo) {
-const params = new URLSearchParams();
-const base   = document.getElementById(‘fil-base’)?.value;
-const piloto = document.getElementById(‘fil-piloto’)?.value;
-const inicio = document.getElementById(‘fil-inicio’)?.value;
-const fim    = document.getElementById(‘fil-fim’)?.value;
-if (base)   params.set(‘base’, base);
-if (piloto) params.set(‘piloto_id’, piloto);
-if (inicio) params.set(‘data_inicio’, inicio);
-if (fim)    params.set(‘data_fim’, fim);
+  const params = new URLSearchParams();
+  const base   = document.getElementById('fil-base')?.value;
+  const piloto = document.getElementById('fil-piloto')?.value;
+  const inicio = document.getElementById('fil-inicio')?.value;
+  const fim    = document.getElementById('fil-fim')?.value;
+  if (base)   params.set('base', base);
+  if (piloto) params.set('piloto_id', piloto);
+  if (inicio) params.set('data_inicio', inicio);
+  if (fim)    params.set('data_fim', fim);
 
-fetch(/api/exportar/${tipo}?${params.toString()}, {
-headers: { Authorization: Bearer ${token} }
-})
-.then(r => r.blob())
-.then(blob => {
-const link = document.createElement(‘a’);
-link.href = URL.createObjectURL(blob);
-link.download = tipo === ‘pdf’ ? ‘relatorio-checklists.pdf’ : ‘relatorio-checklists.xlsx’;
-link.click();
-})
-.catch(() => mostrarToast(‘Erro ao exportar’, ‘erro’));
+  fetch(`/api/exportar/${tipo}?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
+  .then(r => r.blob())
+  .then(blob => {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = tipo === 'pdf' ? 'relatorio-checklists.pdf' : 'relatorio-checklists.xlsx';
+    link.click();
+  })
+  .catch(() => mostrarToast('Erro ao exportar', 'erro'));
 }
 
-// ==========================================
-// CCO — GERENCIAR USUÁRIOS
-// ==========================================
+
+
+
 async function renderUsuarios() {
-const c = document.getElementById(‘conteudo-principal’);
-try {
-const data = await apiRequest(’/api/usuarios’);
-c.innerHTML = `
-<div class="card" style="margin-bottom:20px">
-<div class="card-title" style="margin-bottom:20px">➕ Cadastrar Novo Usuário</div>
-<div class="form-row">
-<div class="form-group">
-<label>Nome Completo *</label>
-<input type="text" id="u-nome" placeholder="Nome do piloto" />
-</div>
-<div class="form-group">
-<label>Email *</label>
-<input type="email" id="u-email" placeholder="email@empresa.com" />
-</div>
-</div>
-<div class="form-row">
-<div class="form-group">
-<label>Senha *</label>
-<input type="password" id="u-senha" placeholder="Mínimo 6 caracteres" />
-</div>
-<div class="form-group">
-<label>Perfil *</label>
-<select id="u-perfil" onchange="toggleBaseCadastro()">
-<option value="piloto">Piloto</option>
-<option value="cco">CCO</option>
-</select>
-</div>
-</div>
-<div class="form-group" id="u-base-group">
-<label>Base *</label>
-<select id="u-base">
-<option value="IMUNANA">Imunana</option>
-<option value="GUANDU">Guandu</option>
-</select>
-</div>
-<button class="btn btn-primary btn-sm" style="width:auto" onclick="cadastrarUsuario()">Cadastrar</button>
-</div>
+  const c = document.getElementById('conteudo-principal');
+  try {
+    const data = await apiRequest('/api/usuarios');
+    c.innerHTML = `
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-title" style="margin-bottom:20px">➕ Cadastrar Novo Usuário</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nome Completo *</label>
+            <input type="text" id="u-nome" placeholder="Nome do piloto" />
+          </div>
+          <div class="form-group">
+            <label>Email *</label>
+            <input type="email" id="u-email" placeholder="email@empresa.com" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Senha *</label>
+            <input type="password" id="u-senha" placeholder="Mínimo 6 caracteres" />
+          </div>
+          <div class="form-group">
+            <label>Perfil *</label>
+            <select id="u-perfil" onchange="toggleBaseCadastro()">
+              <option value="piloto">Piloto</option>
+              <option value="cco">CCO</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" id="u-base-group">
+          <label>Base *</label>
+          <select id="u-base">
+            <option value="IMUNANA">Imunana</option>
+            <option value="GUANDU">Guandu</option>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-sm" style="width:auto" onclick="cadastrarUsuario()">Cadastrar</button>
+      </div>
 
-
-  <div class="card">
-    <div class="card-title" style="margin-bottom:16px">👥 Usuários Cadastrados</div>
-    <div class="tabela-wrapper">
-      <table>
-        <thead>
-          <tr><th>Nome</th><th>Email</th><th>Perfil</th><th>Base</th><th>Status</th><th>Ações</th></tr>
-        </thead>
-        <tbody>
-          ${data.map(u => `
-            <tr>
-              <td>${u.nome}</td>
-              <td>${u.email}</td>
-              <td>${u.perfil === 'cco' ? 'CCO' : 'Piloto'}</td>
-              <td>${u.base || '-'}</td>
-              <td><span class="badge ${u.ativo ? 'badge-sim' : 'badge-nao'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
-              <td>${u.ativo
-                ? `<button class="btn btn-danger btn-sm" onclick="desativarUsuario('${u.id}', '${u.nome}')">Desativar</button>`
-                : '-'}
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    </div>
-  </div>
-`;
-
-
-} catch (e) {
-mostrarToast(e.message, ‘erro’);
-}
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">👥 Usuários Cadastrados</div>
+        <div class="tabela-wrapper">
+          <table>
+            <thead>
+              <tr><th>Nome</th><th>Email</th><th>Perfil</th><th>Base</th><th>Status</th><th>Ações</th></tr>
+            </thead>
+            <tbody>
+              ${data.map(u => `
+                <tr>
+                  <td>${u.nome}</td>
+                  <td>${u.email}</td>
+                  <td>${u.perfil === 'cco' ? 'CCO' : 'Piloto'}</td>
+                  <td>${u.base || '-'}</td>
+                  <td><span class="badge ${u.ativo ? 'badge-sim' : 'badge-nao'}">${u.ativo ? 'Ativo' : 'Inativo'}</span></td>
+                  <td>${u.ativo
+                    ? `<button class="btn btn-danger btn-sm" onclick="desativarUsuario('${u.id}', '${u.nome}')">Desativar</button>`
+                    : '-'}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  } catch (e) {
+    mostrarToast(e.message, 'erro');
+  }
 }
 
 function toggleBaseCadastro() {
-const perfil = document.getElementById(‘u-perfil’).value;
-document.getElementById(‘u-base-group’).style.display = perfil === ‘piloto’ ? ‘block’ : ‘none’;
+  const perfil = document.getElementById('u-perfil').value;
+  document.getElementById('u-base-group').style.display = perfil === 'piloto' ? 'block' : 'none';
 }
 
 async function cadastrarUsuario() {
-const perfil = document.getElementById(‘u-perfil’).value;
-const body = {
-nome:   document.getElementById(‘u-nome’).value.trim(),
-email:  document.getElementById(‘u-email’).value.trim(),
-senha:  document.getElementById(‘u-senha’).value,
-perfil,
-base: perfil === ‘piloto’ ? document.getElementById(‘u-base’).value : null
-};
+  const perfil = document.getElementById('u-perfil').value;
+  const body = {
+    nome:   document.getElementById('u-nome').value.trim(),
+    email:  document.getElementById('u-email').value.trim(),
+    senha:  document.getElementById('u-senha').value,
+    perfil,
+    base: perfil === 'piloto' ? document.getElementById('u-base').value : null
+  };
 
-if (!body.nome || !body.email || !body.senha) {
-mostrarToast(‘Preencha todos os campos obrigatórios.’, ‘erro’);
-return;
-}
+  if (!body.nome || !body.email || !body.senha) {
+    mostrarToast('Preencha todos os campos obrigatórios.', 'erro');
+    return;
+  }
 
-try {
-await apiRequest(’/api/usuarios’, ‘POST’, body);
-mostrarToast(‘✅ Usuário cadastrado com sucesso!’);
-renderUsuarios();
-} catch (e) {
-mostrarToast(e.message, ‘erro’);
-}
+  try {
+    await apiRequest('/api/usuarios', 'POST', body);
+    mostrarToast('✅ Usuário cadastrado com sucesso!');
+    renderUsuarios();
+  } catch (e) {
+    mostrarToast(e.message, 'erro');
+  }
 }
 
 async function desativarUsuario(id, nome) {
-if (!confirm(Desativar o usuário "${nome}"?)) return;
-try {
-await apiRequest(/api/usuarios/${id}, ‘DELETE’);
-mostrarToast(‘Usuário desativado.’);
-renderUsuarios();
-} catch (e) {
-mostrarToast(e.message, ‘erro’);
-}
+  if (!confirm(`Desativar o usuário "${nome}"?`)) return;
+  try {
+    await apiRequest(`/api/usuarios/${id}`, 'DELETE');
+    mostrarToast('Usuário desativado.');
+    renderUsuarios();
+  } catch (e) {
+    mostrarToast(e.message, 'erro');
+  }
 }
 
-// ==========================================
-// INICIALIZAÇÃO
-// ==========================================
+
+
+
 window.onload = () => {
-const savedToken = localStorage.getItem(‘token’);
-const savedUser  = localStorage.getItem(‘usuario’);
-if (savedToken && savedUser) {
-token   = savedToken;
-usuario = JSON.parse(savedUser);
-iniciarApp();
-}
+  const savedToken = localStorage.getItem('token');
+  const savedUser  = localStorage.getItem('usuario');
+  if (savedToken && savedUser) {
+    token   = savedToken;
+    usuario = JSON.parse(savedUser);
+    iniciarApp();
+  }
 };
 </script>
 
